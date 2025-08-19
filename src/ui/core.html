@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Video Sharing Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .main-container {
+            max-width: 700px;
+            background: #fff;
+            margin: 40px auto 20px auto;
+            padding: 30px 30px 20px 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.08);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.7rem;
+            margin-bottom: 25px;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        nav button {
+            font-size: 1rem;
+            padding: 8px 18px;
+            border-radius: 4px;
+            border: 1px solid #bbb;
+            background: #f2f2f2;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        nav button.selected {
+            background: #1867c0;
+            color: #fff;
+            border: 1px solid #1867c0;
+        }
+        .screen {
+            display: none;
+            animation: fadeIn .5s;
+        }
+        .screen.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1;}
+        }
+        .field-group {
+            margin-bottom: 16px;
+        }
+        .field-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .field-group input, .field-group textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #bbb;
+            font-size: 1rem;
+            margin-bottom: 3px;
+        }
+        .field-group textarea {
+            resize: vertical;
+            min-height: 60px;
+            max-height: 180px;
+        }
+        .upload-btn {
+            display: inline-block;
+            background: #1867c0;
+            color: #fff;
+            font-size: 1.1rem;
+            padding: 10px 26px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .upload-btn:disabled {
+            background: #99aabb;
+            cursor: not-allowed;
+        }
+        .progress-bar {
+            width: 100%;
+            background: #ececec;
+            height: 18px;
+            border-radius: 9px;
+            overflow: hidden;
+            margin-top: 12px;
+            margin-bottom: 6px;
+        }
+        .progress-bar-fill {
+            background: #1867c0;
+            height: 100%;
+            transition: width .3s;
+        }
+        .message {
+            padding: 9px 13px;
+            border-radius: 5px;
+            margin-top: 12px;
+            margin-bottom: 5px;
+            font-size: .98rem;
+        }
+        .message.success {
+            background: #d6f8d6;
+            color: #229622;
+        }
+        .message.error {
+            background: #ffd7d7;
+            color: #b70000;
+        }
+        .video-list {
+            margin-top: 4px;
+        }
+        .video-card {
+            padding: 15px 13px 13px 13px;
+            background: #f9fafb;
+            border-radius: 7px;
+            margin-bottom: 16px;
+            box-shadow: 0 1.5px 9px rgba(0,0,0,.04);
+        }
+        .video-title {
+            font-weight: 600;
+            font-size: 1.15rem;
+            margin-bottom: 5px;
+            color: #2564a9;
+            word-break: break-word;
+        }
+        .video-description {
+            margin-bottom: 9px;
+            color: #444;
+            word-break: break-word;
+        }
+        .video-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 3px;
+        }
+        .video-date {
+            font-size: .91rem;
+            color: #666;
+        }
+        .video-player {
+            width: 100%;
+            max-width: 410px;
+            height: 180px;
+            border-radius: 4px;
+            margin-top: 5px;
+            background: #121212;
+            outline: none;
+        }
+        .refresh-btn {
+            border: none;
+            background: #1867c0;
+            color: #fff;
+            font-size: .98rem;
+            border-radius: 5px;
+            cursor: pointer;
+            padding: 7px 16px;
+            margin-bottom: 18px;
+            margin-right: 0;
+        }
+        @media (max-width: 750px) {
+            .main-container { max-width: 96vw; padding: 13px 6vw 10px 6vw;}
+            .video-player { max-width: 100%; height: 188px; }
+        }
+        @media (max-width: 500px) {
+            .main-container { padding: 5px 1vw 3px 1vw; }
+            h1 { font-size: 1.08rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Simple Video Sharing Platform</h1>
+        <nav>
+            <button id="nav-upload" class="selected" type="button">Upload Video</button>
+            <button id="nav-list" type="button">View Uploaded Videos</button>
+        </nav>
+        <div id="screen-upload" class="screen active"></div>
+        <div id="screen-list" class="screen"></div>
+    </div>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script>
+        // Root DOM nodes for screens
+        const uploadRoot = document.getElementById('screen-upload');
+        const listRoot = document.getElementById('screen-list');
+        // Simple SPA navigation
+        function showScreen(name) {
+            if (name === 'upload') {
+                uploadRoot.classList.add('active');
+                listRoot.classList.remove('active');
+                document.getElementById('nav-upload').classList.add('selected');
+                document.getElementById('nav-list').classList.remove('selected');
+            } else {
+                uploadRoot.classList.remove('active');
+                listRoot.classList.add('active');
+                document.getElementById('nav-upload').classList.remove('selected');
+                document.getElementById('nav-list').classList.add('selected');
+            }
+        }
+        document.getElementById('nav-upload').onclick = function() { showScreen('upload'); };
+        document.getElementById('nav-list').onclick = function() { showScreen('list'); };
+        ///////////////////////////
+        // ---- React SPA ----
+        ///////////////////////////
+        // Helper functions
+        function formatUTCDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+            } catch(e) { return dateStr+''; }
+        }
+        function isValidFileType(type) {
+            return [
+                'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+                'video/x-matroska', 'video/x-msvideo'
+            ].includes(type);
+        }
+        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+        //////////////////////////////
+        // Upload Video Screen
+        //////////////////////////////
+        function UploadVideoScreen() {
+            const [title, setTitle] = React.useState('');
+            const [description, setDescription] = React.useState('');
+            const [file, setFile] = React.useState(null);
+            const [progress, setProgress] = React.useState(0);
+            const [isUploading, setUploading] = React.useState(false);
+            const [message, setMessage] = React.useState(null);
+            function handleFileChange(e) {
+                if (!e.target.files || !e.target.files[0]) {
+                    setFile(null);
+                    return;
+                }
+                const f = e.target.files[0];
+                if (!isValidFileType(f.type)) {
+                    setMessage({ error: "Unsupported video file type." });
+                    setFile(null);
+                    return;
+                }
+                if (f.size > MAX_VIDEO_SIZE) {
+                    setMessage({ error: "File is too large (max 100MB)." });
+                    setFile(null);
+                    return;
+                }
+                setFile(f);
+                setMessage(null);
+            }
+            function handleUpload(e) {
+                e.preventDefault();
+                if (isUploading) return;
+                // Validation
+                if (!title || title.trim().length < 1 || title.length > 100) {
+                    setMessage({ error: "Title is required (1-100 characters)." });
+                    return;
+                }
+                if (description.length > 1000) {
+                    setMessage({ error: "Description too long (max 1000 chars)." });
+                    return;
+                }
+                if (!file) {
+                    setMessage({ error: "Video file is required." });
+                    return;
+                }
+                setUploading(true);
+                setProgress(0);
+                setMessage(null);
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('title', title.trim());
+                formData.append('description', description.trim());
+                formData.append('video', file);
+                // Use XHR for progress tracking
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/upload', true);
+                xhr.responseType = 'json';
+                xhr.upload.onprogress = function(ev) {
+                    if (ev.lengthComputable) {
+                        let percent = Math.round(ev.loaded * 100 / ev.total);
+                        setProgress(percent);
+                    }
+                };
+                xhr.onload = function() {
+                    setUploading(false);
+                    setProgress(100);
+                    let resp = xhr.response;
+                    if (xhr.status === 201) {
+                        setMessage({ success: resp.message });
+                        setTitle('');
+                        setDescription('');
+                        setFile(null);
+                        setTimeout(() => setProgress(0), 900);
+                    } else {
+                        setMessage({ error: (resp && resp.error) ? resp.error : 'Upload failed.' });
+                        setProgress(0);
+                    }
+                };
+                xhr.onerror = function() {
+                    setUploading(false);
+                    setMessage({ error: 'Network error during upload.' });
+                    setProgress(0);
+                };
+                xhr.send(formData);
+            }
+            return React.createElement(
+                'form',
+                { onSubmit: handleUpload, style: { maxWidth: '545px', margin: '0 auto' }, encType: 'multipart/form-data' },
+                React.createElement('div', { className: 'field-group' },
+                    React.createElement('label', { htmlFor: 'video-title' }, 'Video Title'),
+                    React.createElement('input', {
+                        id: 'video-title',
+                        type: 'text',
+                        required: true,
+                        maxLength: 100,
+                        placeholder: 'Enter a title...',
+                        value: title,
+                        disabled: isUploading,
+                        onChange: e => setTitle(e.target.value)
+                    })
+                ),
+                React.createElement('div', { className: 'field-group' },
+                    React.createElement('label', { htmlFor: 'video-desc' }, 'Description'),
+                    React.createElement('textarea', {
+                        id: 'video-desc',
+                        maxLength: 1000,
+                        placeholder: 'Describe the video (optional)...',
+                        value: description,
+                        disabled: isUploading,
+                        onChange: e => setDescription(e.target.value)
+                    })
+                ),
+                React.createElement('div', { className: 'field-group' },
+                    React.createElement('label', { htmlFor: 'video-file' }, 'Video File'),
+                    React.createElement('input', {
+                        id: 'video-file',
+                        type: 'file',
+                        accept: 'video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska,video/x-msvideo',
+                        disabled: isUploading,
+                        onChange: handleFileChange
+                    }),
+                    file && React.createElement('div', { style: { fontSize: '.92em', color: '#338' } },
+                        'Selected:', ' ', file.name, ' (', Math.round(file.size / 1024) + 'KB', ')'
+                    )
+                ),
+                progress > 0 ? React.createElement('div', { className: 'progress-bar' },
+                    React.createElement('div', {
+                        className: 'progress-bar-fill',
+                        style: { width: progress + '%' }
+                    })
+                ) : null,
+                message?.success ? React.createElement('div', { className: 'message success' }, message.success) : null,
+                message?.error ? React.createElement('div', { className: 'message error' }, message.error) : null,
+                React.createElement('button', {
+                    className: 'upload-btn',
+                    type: 'submit',
+                    disabled: isUploading
+                }, isUploading ? 'Uploading...' : 'Upload Video')
+            );
+        }
+        //////////////////////////////
+        // View Uploaded Videos Screen
+        //////////////////////////////
+        function VideoListScreen() {
+            const [videos, setVideos] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const [error, setError] = React.useState(null);
+            function fetchVideos() {
+                setLoading(true);
+                setError(null);
+                fetch('/api/videos')
+                    .then(resp => resp.json())
+                    .then(data => {
+                        if (data && Array.isArray(data.videos)) {
+                            setVideos(data.videos);
+                        } else {
+                            setVideos([]);
+                            setError('Could not fetch videos.');
+                        }
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        setLoading(false);
+                        setError('Network/server error while loading videos.');
+                    });
+            }
+            React.useEffect(fetchVideos, []);
+            return React.createElement(
+                'div',
+                { style: { maxWidth: '650px', margin: '0 auto' } },
+                React.createElement('button', {
+                    className: 'refresh-btn',
+                    type: 'button',
+                    onClick: fetchVideos,
+                    disabled: loading
+                }, loading ? 'Refreshing...' : 'Refresh'),
+                error ? React.createElement('div', { className: 'message error' }, error) : null,
+                !error && videos.length === 0 && !loading ?
+                    React.createElement('div', { className: 'message' }, 'No videos have been uploaded yet.') : null,
+                React.createElement('div', { className: 'video-list' },
+                    videos.map((video, idx) =>
+                        React.createElement('div', { className: 'video-card', key: idx },
+                            React.createElement('div', { className: 'video-title' }, video.title),
+                            video.description ? React.createElement('div', { className: 'video-description' }, video.description) : null,
+                            React.createElement('div', { className: 'video-actions' },
+                                React.createElement('span', { className: 'video-date' },
+                                    formatUTCDate(video.uploadedTime)
+                                ),
+                                React.createElement('a', {
+                                    href: video.location,
+                                    target: '_blank',
+                                    rel: 'noopener noreferrer',
+                                    style: { color: '#1867c0', textDecoration: 'underline', fontWeight: 'bold', marginLeft: '12px' }
+                                }, 'Open in New Tab')
+                            ),
+                            React.createElement('video', {
+                                className: 'video-player',
+                                controls: true,
+                                src: video.location,
+                                poster: '',
+                                preload: 'none'
+                            })
+                        )
+                    )
+                )
+            );
+        }
+        // Mount React screens
+        ReactDOM.createRoot(uploadRoot).render(React.createElement(UploadVideoScreen));
+        ReactDOM.createRoot(listRoot).render(React.createElement(VideoListScreen));
+    </script>
+</body>
+</html>
