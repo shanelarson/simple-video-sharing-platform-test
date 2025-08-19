@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Video Sharing Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- React and ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <style>
+    body {
+      background: #fafafa;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .app-container {
+      max-width: 680px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #ccc;
+      padding: 24px 32px 32px 32px;
+    }
+    h1 {
+      margin-top: 0;
+      font-weight: 500;
+      color: #333;
+      text-align: center;
+    }
+    .screen-tabs {
+      margin: 0 auto 20px auto;
+      display: flex;
+      justify-content: center;
+    }
+    .tab-btn {
+      background: #e5e5e5;
+      border: none;
+      border-radius: 20px 20px 0 0;
+      margin-right: 8px;
+      padding: 8px 32px;
+      font-size: 1rem;
+      cursor: pointer;
+      outline: none;
+      margin-bottom: -2px;
+      font-weight: 500;
+      color: #666;
+      transition: background .18s;
+    }
+    .tab-btn.active {
+      background: #1976d2;
+      color: #fff;
+    }
+    form, .upload-btn-group {
+      margin-top: 16px;
+    }
+    label {
+      display: block;
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 6px;
+      margin-top: 18px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      font-size: 1rem;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #bbb;
+      background-color: #f9f9f9;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+      transition: border .18s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: #1976d2;
+      outline: none;
+      background: #f4f8fb;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .upload-btn {
+      background: #1976d2;
+      color: #fff;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 36px;
+      font-size: 1rem;
+      margin-top: 14px;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .upload-btn:disabled {
+      background: #b6b6b6;
+      cursor: not-allowed;
+    }
+    .video-preview-list {
+      margin-top: 16px;
+    }
+    .video-row {
+      border-bottom: 1px solid #eee;
+      padding: 14px 0 10px 0;
+      display: flex;
+      align-items: flex-start;
+    }
+    .video-row:last-child {
+      border-bottom: none;
+    }
+    .video-meta {
+      margin-left: 20px;
+      flex: 1;
+    }
+    .video-title {
+      font-size: 1.07rem;
+      font-weight: 500;
+      color: #222;
+      margin-bottom: 4px;
+    }
+    .video-desc {
+      color: #555;
+      margin-bottom: 7px;
+      font-size: .98rem;
+      white-space: pre-line;
+    }
+    .video-date {
+      font-size: .93rem;
+      color: #888;
+      margin-bottom: 2px;
+    }
+    .video-thumb {
+      width: 140px;
+      min-width: 140px;
+      height: 80px;
+      border-radius: 6px;
+      background: #000;
+      object-fit: cover;
+      margin-top: 4px;
+      box-shadow: 0 1px 6px #e0e0e0;
+    }
+    @media (max-width: 800px) {
+      .app-container {
+        padding: 10px 5vw 20px 5vw;
+      }
+      .video-row {
+        flex-direction: column;
+      }
+      .video-thumb {
+        width: 100%;
+        min-width: unset;
+        height: 160px;
+        margin-bottom: 8px;
+      }
+      .video-meta {
+        margin-left: 0;
+      }
+    }
+    .error-msg {
+      color: #b71c1c;
+      font-size: 1rem;
+      font-weight: 500;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      white-space: pre-line;
+    }
+    .success-msg {
+      color: #1976d2;
+      font-size: 1rem;
+      font-weight: 500;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      white-space: pre-line;
+    }
+    .loader {
+      margin: 14px 0;
+      text-align: center;
+    }
+    .loader:after {
+      content: '';
+      display: inline-block;
+      margin-left: 8px;
+      vertical-align: middle;
+      border: 3px solid #b6b6b6;
+      border-top: 3px solid #1976d2;
+      border-radius: 50%;
+      width: 19px;
+      height: 19px;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { 100% { transform:rotate(360deg); } }
+    .video-player {
+      width: 100%;
+      max-width: 480px;
+      height: 270px;
+      margin: 0 auto 16px auto;
+      display: block;
+      background: #101820;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px #d1d1d1;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+<script type="text/javascript">
+(function() {
+  const MAX_VIDEO_SIZE = 200 * 1024 * 1024;
+  const VIDEO_MIME_TYPES = [
+    'video/mp4',
+    'video/webm',
+    'video/ogg',
+    'video/mov',
+    'video/quicktime',
+    'video/x-matroska'
+  ];
+  function isSupportedVideoType(mimetype) {
+    return VIDEO_MIME_TYPES.includes(mimetype);
+  }
+  function formatDate(iso) {
+    try {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute:'2-digit',
+      });
+    } catch(e) {
+      return iso || '';
+    }
+  }
+  function ValidateVideoFile(file) {
+    if (!file) return { valid: false, error: 'No file selected.' };
+    if (!isSupportedVideoType(file.type)) {
+      return { valid: false, error: 'Unsupported video format. Allowed: MP4, WebM, MOV, OGG, MKV.' };
+    }
+    if (file.size <= 0) {
+      return { valid: false, error: 'Selected file has zero size.' };
+    }
+    if (file.size > MAX_VIDEO_SIZE) {
+      return { valid: false, error: 'Video file size exceeds 200MB limit.' };
+    }
+    return { valid: true };
+  }
+  function App() {
+    const [screen, setScreen] = React.useState('upload');
+    return React.createElement('div', {className: 'app-container'},
+      React.createElement('h1', null, "Simple Video Sharing Platform"),
+      React.createElement('div', {className: 'screen-tabs'},
+        React.createElement('button', {
+          className: screen === 'upload' ? 'tab-btn active' : 'tab-btn',
+          type: 'button',
+          onClick: ()=>setScreen('upload')
+        }, 'Upload Video'),
+        React.createElement('button', {
+          className: screen === 'view' ? 'tab-btn active' : 'tab-btn',
+          type: 'button',
+          onClick: ()=>setScreen('view')
+        }, 'View Uploaded Videos'),
+      ),
+      screen === 'upload' ?
+        React.createElement(UploadScreen, {onUploadSuccess: ()=>setScreen('view')}) :
+        React.createElement(ViewVideosScreen, null)
+    );
+  }
+  function UploadScreen(props) {
+    const [title, setTitle] = React.useState('');
+    const [desc, setDesc] = React.useState('');
+    const [file, setFile] = React.useState(null);
+    const [formError, setFormError] = React.useState('');
+    const [uploading, setUploading] = React.useState(false);
+    const [uploadSuccess, setUploadSuccess] = React.useState('');
+    const fileInputRef = React.useRef(null);
+    function handleFileChange(e) {
+      setFormError('');
+      setUploadSuccess('');
+      const selected = e.target.files[0];
+      setFile(selected || null);
+      if (selected) {
+        const { valid, error } = ValidateVideoFile(selected);
+        if (!valid) {
+          setFormError(error);
+        }
+      }
+    }
+    function handleSubmit(e) {
+      e.preventDefault();
+      setFormError('');
+      setUploadSuccess('');
+      if (!title.trim() || !desc.trim()) {
+        setFormError('Title and description are required.');
+        return;
+      }
+      const { valid, error } = ValidateVideoFile(file);
+      if (!valid) {
+        setFormError(error);
+        return;
+      }
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('title', title.trim());
+      formData.append('description', desc.trim());
+      formData.append('video', file);
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+      .then(r=>r.json())
+      .then(data=>{
+        setUploading(false);
+        if (data && data.success) {
+          setUploadSuccess('Video uploaded successfully!');
+          setTitle('');
+          setDesc('');
+          setFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          if (props.onUploadSuccess) props.onUploadSuccess();
+        } else {
+          setFormError((data && data.error) || 'Upload failed.');
+        }
+      })
+      .catch(e=>{
+        setUploading(false);
+        setFormError('Upload failed. Please try again.');
+      });
+    }
+    return React.createElement('form', {onSubmit:handleSubmit, noValidate:true, autoComplete:"off"},
+      React.createElement('label', null, "Video Title"),
+      React.createElement('input', {
+        type: 'text',
+        value: title,
+        required: true,
+        maxLength: 256,
+        placeholder: "Enter video title...",
+        onChange: e=>setTitle(e.target.value)
+      }),
+      React.createElement('label', null, "Description"),
+      React.createElement('textarea', {
+        value: desc,
+        required: true,
+        maxLength: 1200,
+        placeholder: "Enter brief description...",
+        onChange: e=>setDesc(e.target.value)
+      }),
+      React.createElement('label', null, "Select Video File"),
+      React.createElement('input', {
+        type: 'file',
+        ref: fileInputRef,
+        accept: VIDEO_MIME_TYPES.join(','),
+        onChange: handleFileChange
+      }),
+      React.createElement('div', {className: "upload-btn-group"},
+        React.createElement('button', {
+          type: "submit",
+          className:"upload-btn",
+          disabled: uploading
+        }, uploading ? 'Uploading...' : 'Upload Video')
+      ),
+      formError ? React.createElement('div', {className:'error-msg'}, formError) : null,
+      uploadSuccess ? React.createElement('div', {className:'success-msg'}, uploadSuccess) : null,
+      uploading ? React.createElement('div', {className:'loader'}, "Uploading...") : null,
+    );
+  }
+  function ViewVideosScreen() {
+    const [videos, setVideos] = React.useState([]);
+    const [loading, setLoading] = React.useState(false);
+    const [loadError, setLoadError] = React.useState('');
+    const [selected, setSelected] = React.useState(null);
+    React.useEffect(()=>{
+      setLoadError('');
+      setLoading(true);
+      fetch('/videos')
+        .then(r=>r.json())
+        .then(data=>{
+          setLoading(false);
+          if (data && Array.isArray(data.videos)) {
+            setVideos(data.videos);
+          } else {
+            setLoadError('Failed to load videos.');
+          }
+        })
+        .catch(e=>{
+          setLoading(false);
+          setLoadError('Failed to load videos.');
+        });
+    }, []);
+    function openPlayer(idx) {
+      setSelected(idx);
+    }
+    function closePlayer() {
+      setSelected(null);
+    }
+    return React.createElement('div', null,
+      loading ? React.createElement('div', {className: 'loader'}, 'Loading videos...') : null,
+      loadError ? React.createElement('div', {className:'error-msg'}, loadError) : null,
+      videos.length === 0 && !loading ?
+        React.createElement('div', {style:{margin:'24px 0', color:'#666', textAlign:'center'}}, 
+          "No videos uploaded yet. Be the first to upload!") :
+        React.createElement('div', {className:'video-preview-list'},
+          videos.map((video, i)=>
+            React.createElement('div', {className:'video-row', key:i},
+              React.createElement('img', {
+                className:'video-thumb',
+                src: video.location,
+                alt:'Video thumbnail',
+                onClick: ()=>openPlayer(i),
+                title: "Click to play",
+                style: {cursor:'pointer'}
+              }),
+              React.createElement('div', {className:'video-meta'},
+                React.createElement('div', {className:'video-title'}, video.title),
+                React.createElement('div', {className:'video-desc'}, video.description),
+                React.createElement('div', {className:'video-date'}, 
+                  "Uploaded: " + formatDate(video.uploadedTime)
+                ),
+                React.createElement('button', {
+                  style:{
+                    background:'#fff', color:'#1976d2', border:'1px solid #1976d2',
+                    borderRadius:'5px', padding:'6px 12px', cursor:'pointer', marginTop:'8px'
+                  },
+                  type:'button',
+                  onClick: ()=>openPlayer(i)
+                }, 'Play Video')
+              )
+            )
+          ),
+          selected !== null && videos[selected] ?
+            React.createElement('div', {
+              style: {
+                position:'fixed',top:0,left:0,right:0,bottom:0,
+                background:'rgba(34,50,64,.17)',zIndex:90,display:'flex',
+                alignItems:'center',justifyContent:'center'
+              },
+              onClick:closePlayer
+            },
+              React.createElement('div', {
+                style: {
+                  background:'#fff', borderRadius:'10px', padding:'24px 28px',
+                  boxShadow:'0 3px 28px #0003', maxWidth:'520px', width:'98vw',
+                  position:'relative'
+                },
+                onClick:e=>e.stopPropagation()
+              },
+                React.createElement('video', {
+                  className:'video-player',
+                  src: videos[selected].location,
+                  controls: true,
+                  autoPlay: true,
+                  poster: '',
+                  style: {marginBottom: '12px'},
+                }),
+                React.createElement('div', {style:{marginBottom:'16px'}},
+                  React.createElement('b', null, videos[selected].title),
+                  ' – ',
+                  formatDate(videos[selected].uploadedTime)
+                ),
+                React.createElement('div', {style:{marginBottom:'16px', color:'#555'}}, 
+                  videos[selected].description
+                ),
+                React.createElement('button', {
+                  style:{
+                    background:'#fff', color:'#1976d2', border:'1px solid #1976d2',
+                    borderRadius:'5px', padding:'6px 16px', cursor:'pointer'
+                  },
+                  type:'button',
+                  onClick:closePlayer
+                }, 'Close')
+              )
+            )
+          : null
+        )
+    );
+  }
+  // Render SPA
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    React.createElement(App, null)
+  );
+})();
+</script>
+</body>
+</html>
